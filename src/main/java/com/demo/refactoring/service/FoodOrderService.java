@@ -16,11 +16,14 @@ import java.util.UUID;
 @Component
 public class FoodOrderService {
 
-    private StoreRepository storeRepository;
+    public static final double DISCOUNT_CASH = 0.5;
+    public static final double DISCOUNT_DEFAULT = 0.0;
 
-    private CustomerRepository customerRepository;
+    private final StoreRepository storeRepository;
 
-    private VoucherDiscountRepository voucherDiscountRepository;
+    private final CustomerRepository customerRepository;
+
+    private final VoucherDiscountRepository voucherDiscountRepository;
 
     public FoodOrderService(StoreRepository storeRepository, CustomerRepository customerRepository,
                             VoucherDiscountRepository voucherDiscountRepository) {
@@ -29,76 +32,65 @@ public class FoodOrderService {
         this.voucherDiscountRepository = voucherDiscountRepository;
     }
 
-    public FoodOrder createFoodOrder(CreateFoodOrderRequest c) {
+    public FoodOrder createFoodOrder(CreateFoodOrderRequest orderRequest) {
 
-        FoodOrder pedido = new FoodOrder();
-        pedido.setId(UUID.randomUUID().toString());
-        pedido.setCreatedAt(LocalDateTime.now());
+        FoodOrder foodOrder = new FoodOrder();
+        foodOrder.setId(UUID.randomUUID().toString());
+        foodOrder.setCreatedAt(LocalDateTime.now());
 
-        if(c.getStoreId() == null && c.getStoreId().isEmpty()) {
-            System.out.println("Store id null or empty.");
-            throw new IllegalArgumentException();
+        checkIfStoreIdExists(orderRequest);
+
+        checkIfCustomerIdExists(orderRequest);
+
+        if(!orderRequest.isPaid()) {
+            calculateTotalPrice(orderRequest, foodOrder);
         }
 
+        return foodOrder;
+    }
+
+    private void calculateTotalPrice(CreateFoodOrderRequest orderRequest, FoodOrder foodOrder) {
+        VoucherDiscount voucherDiscount = voucherDiscountRepository.findByIdAndCustomerId(orderRequest.getVoucherDiscountId(), orderRequest.getCustomerId());
+        double totalPrice = 0.0;
+        totalPrice = getTotalPriceByOrderItems(orderRequest, totalPrice);
+        Double discountPaymentMethod = getDiscountPaymentMethod(orderRequest);
+        foodOrder.setTotalPrice(getTotalPrice(totalPrice, voucherDiscount, discountPaymentMethod));
+    }
+
+    private static double getTotalPrice(double totalPrice, VoucherDiscount voucherDiscount, Double discountPaymentMethod) {
+        return totalPrice - (voucherDiscount.getValue() + discountPaymentMethod);
+    }
+
+    private Double getDiscountPaymentMethod(CreateFoodOrderRequest orderRequest) {
+        return switch (orderRequest.getPaymentType()) {
+            case PIX, DEBIT_CARD, CASH -> DISCOUNT_CASH;
+            default -> DISCOUNT_DEFAULT;
+        };
+    }
+
+    private double getTotalPriceByOrderItems(CreateFoodOrderRequest orderRequest, double totalPrice) {
+        for (FoodOrderItemRequest item: orderRequest.getOrderItemList()) {
+            FoodItem foodItem = storeRepository.findItem(orderRequest.getStoreId(), item.getId());
+            totalPrice = totalPrice + (foodItem.getPrice() * item.getAmount());
+        }
+        return totalPrice;
+    }
+
+    private void checkIfCustomerIdExists(CreateFoodOrderRequest orderRequest) {
         try {
-            storeRepository.findById(c.getStoreId());
-        } catch (Exception e) {
-            System.out.println("Store id not found.");
-            throw new IllegalArgumentException();
-        }
-
-        if(c.getCustomerId() == null && c.getCustomerId().isEmpty()) {
-            System.out.println("Customer id null or empty.");
-            throw new IllegalArgumentException();
-        }
-
-        try {
-            customerRepository.findById(c.getCustomerId());
+            customerRepository.findById(orderRequest.getCustomerId());
         } catch (Exception e) {
             System.out.println("Customer id not found.");
             throw new IllegalArgumentException();
         }
+    }
 
-        if(c.getOrderItemList().isEmpty()) {
-            System.out.println("Order item list is empty.");
+    private void checkIfStoreIdExists(CreateFoodOrderRequest orderRequest) {
+        try {
+            storeRepository.findById(orderRequest.getStoreId());
+        } catch (Exception e) {
+            System.out.println("Store id not found.");
             throw new IllegalArgumentException();
         }
-
-        // processa caso o cliente ainda nao tenha feito pagamento
-        if(c.isPaid() == false) {
-            VoucherDiscount vd = voucherDiscountRepository.findByIdAndCustomerId(c.getVoucherDiscountId(), c.getCustomerId());
-
-            Double precoTotal = 0.0;
-
-            for (FoodOrderItemRequest item: c.getOrderItemList()) {
-                FoodItem foodItem = storeRepository.findItem(c.getStoreId(), item.getId());
-                precoTotal = precoTotal + (foodItem.getPrice() * item.getAmount());
-            }
-
-            Double descontoPorMeioDePagamento = 0.0;
-
-            if(c.getPaymentType().toString().equals("CASH")) {
-                descontoPorMeioDePagamento = 0.5;
-            }
-
-            if(c.getPaymentType().toString().equals("PIX")) {
-                descontoPorMeioDePagamento = 0.5;
-            }
-
-            if(c.getPaymentType().toString().equals("DEBIT_CARD")) {
-                descontoPorMeioDePagamento = 0.5;
-            }
-
-            if(c.getPaymentType().toString().equals("CREDIT_CARD")) {
-                descontoPorMeioDePagamento = 0.0;
-            }
-
-            precoTotal = precoTotal - (vd.getValue() + descontoPorMeioDePagamento);
-
-            pedido.setTotalPrice(precoTotal);
-        }
-
-        return pedido;
-
     }
 }

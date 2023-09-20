@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class VoucherDiscountRepository {
-
     public VoucherDiscount findByIdAndCustomerId(String id, String customerId) {
         return new VoucherDiscount(12.34);
     }

@@ -1,5 +1,7 @@
 package com.demo.refactoring.controller.request;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import org.springframework.validation.annotation.Validated;
 
 import javax.validation.constraints.NotNull;
@@ -8,11 +10,13 @@ import java.util.List;
 @Validated
 public class CreateFoodOrderRequest {
 
+    @NotBlank
     private String storeId;
 
+    @NotBlank
     private String customerId;
 
-    @NotNull
+    @NotBlank
     private List<FoodOrderItemRequest> orderItemList;
 
     @NotNull
