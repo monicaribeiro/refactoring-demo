@@ -16,11 +16,11 @@ import java.util.UUID;
 @Component
 public class FoodOrderService {
 
-    private StoreRepository storeRepository;
+    private final StoreRepository storeRepository;
 
-    private CustomerRepository customerRepository;
+    private final CustomerRepository customerRepository;
 
-    private VoucherDiscountRepository voucherDiscountRepository;
+    private final VoucherDiscountRepository voucherDiscountRepository;
 
     public FoodOrderService(StoreRepository storeRepository, CustomerRepository customerRepository,
                             VoucherDiscountRepository voucherDiscountRepository) {
@@ -29,7 +29,7 @@ public class FoodOrderService {
         this.voucherDiscountRepository = voucherDiscountRepository;
     }
 
-    public FoodOrder createFoodOrder(CreateFoodOrderRequest c) {
+    public FoodOrder createF(CreateFoodOrderRequest c) {
 
         FoodOrder pedido = new FoodOrder();
         pedido.setId(UUID.randomUUID().toString());
